@@ -20,23 +20,26 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 
 @Composable
-fun ChatScreen() {
-    val mensajes = listOf(
-        true,
-        false,
-        true,
-        false,
-        false,
-        true
-    )
+fun ChatScreen(viewModel: ChatViewModel, navController: NavController, usuario: String) {
+    val mensajes by viewModel.mensajes.collectAsState(initial = emptyList())
+
+    var mensaje by remember {
+        mutableStateOf("")
+    }
 
     Column(
         modifier = Modifier
@@ -49,8 +52,8 @@ fun ChatScreen() {
                 .fillMaxWidth(),
             reverseLayout = true
         ) {
-            items(mensajes) { msg ->
-                TextBox(testPosition = msg)
+            items(mensajes.reversed()) { msg ->
+                TextBox(testPosition = msg.userId != usuario, msg.msg ?: "")
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
@@ -58,16 +61,24 @@ fun ChatScreen() {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            InputMessage(modifier = Modifier
-                .weight(1f)
-                .align(Alignment.Bottom))
-            SendMessageButton()
+            InputMessage(
+                modifier = Modifier
+                    .weight(1f)
+                    .align(Alignment.Bottom),
+                onChange = { msg -> mensaje = msg },
+                mensaje = mensaje
+            )
+            SendMessageButton(
+                viewModel,
+                mensaje,
+                limpiar = { mensaje = "" },
+                usuarioRegistrado = usuario)
         }
     }
 }
 
 @Composable
-fun TextBox(testPosition: Boolean) {
+fun TextBox(testPosition: Boolean, texto: String) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (testPosition) Alignment.Start else Alignment.End
@@ -79,7 +90,7 @@ fun TextBox(testPosition: Boolean) {
         ) {
             Text(
                 modifier = Modifier.padding(vertical = 8.dp, horizontal = 15.dp),
-                text = "hola como estas",
+                text = texto,
                 color = Color.Black,
                 fontSize = 17.sp,
                 textAlign = TextAlign.End
@@ -89,18 +100,26 @@ fun TextBox(testPosition: Boolean) {
 }
 
 @Composable
-fun InputMessage(modifier: Modifier) {
+fun InputMessage(modifier: Modifier, onChange: (String) -> Unit, mensaje: String) {
     TextField(
         modifier = modifier
             .fillMaxWidth(),
-        value = "",
-        onValueChange = {}
+        value = mensaje,
+        onValueChange = { onChange(it) },
     )
 }
 
 @Composable
-fun SendMessageButton() {
-    IconButton(onClick = { /*TODO*/ }) {
+fun SendMessageButton(
+    viewModel: ChatViewModel,
+    texto: String,
+    limpiar: () -> Unit,
+    usuarioRegistrado: String
+) {
+    IconButton(onClick = {
+        viewModel.onEvent(ChatEvents.EnviarMensaje(texto, usuario = usuarioRegistrado))
+        limpiar()
+    }) {
         Icon(imageVector = Icons.Default.Send, contentDescription = "")
     }
 }
